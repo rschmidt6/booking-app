@@ -1,10 +1,9 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { db, init } = require("./db");
+import express from "express";
+import cors from "cors";
+import { db, init } from "./db.js";
+import { config } from "./config.js";
 
 const app = express();
-const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -18,6 +17,6 @@ app.get("/api/availability", (req, res) => {
   res.json(availability);
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(config.port, () => {
+  console.log(`Server running on port ${config.port}`);
 });

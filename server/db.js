@@ -1,4 +1,6 @@
-const Database = require("better-sqlite3");
+// server/db.js
+import Database from "better-sqlite3";
+
 const db = new Database("bookings.db", { verbose: console.log });
 
 const init = () => {
@@ -25,4 +27,4 @@ const init = () => {
   `);
 };
 
-module.exports = { db, init };
+export { db, init };
