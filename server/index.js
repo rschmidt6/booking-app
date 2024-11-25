@@ -1,20 +1,49 @@
 import express from "express";
 import cors from "cors";
-import { db, init } from "./db.js";
 import { config } from "./config.js";
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
-// Initialize database
-init();
+// Mock data
+const mockTimeSlots = [
+  {
+    id: 1,
+    date: "2024-11-25",
+    start_time: "09:00",
+    end_time: "10:00",
+    is_booked: false,
+  },
+  {
+    id: 2,
+    date: "2024-11-25",
+    start_time: "10:00",
+    end_time: "11:00",
+    is_booked: false,
+  },
+  {
+    id: 3,
+    date: "2024-11-26",
+    start_time: "09:00",
+    end_time: "10:00",
+    is_booked: true,
+  },
+];
 
-// Example endpoint
+app.get("/", (req, res) => {
+  res.json({ message: "Booking API Running" });
+});
+
 app.get("/api/availability", (req, res) => {
-  const availability = db.prepare("SELECT * FROM availability").all();
-  res.json(availability);
+  res.json(mockTimeSlots);
+});
+
+app.post("/api/appointments", (req, res) => {
+  res.status(201).json({
+    message: "Appointment created",
+    appointment: req.body,
+  });
 });
 
 app.listen(config.port, () => {
