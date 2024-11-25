@@ -1,51 +1,42 @@
+// server/index.js
 import express from "express";
 import cors from "cors";
-import { config } from "./config.js";
+import { env } from "./config/env.js";
+import { init } from "./db.js";
+import * as appointmentController from "./controllers/appointmentController.js";
+import * as availabilityController from "./controllers/availabilityController.js";
+import * as flashController from "./controllers/flashController.js";
+import * as emailController from "./controllers/emailController.js";
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// Mock data
-const mockTimeSlots = [
-  {
-    id: 1,
-    date: "2024-11-25",
-    start_time: "09:00",
-    end_time: "10:00",
-    is_booked: false,
-  },
-  {
-    id: 2,
-    date: "2024-11-25",
-    start_time: "10:00",
-    end_time: "11:00",
-    is_booked: false,
-  },
-  {
-    id: 3,
-    date: "2024-11-26",
-    start_time: "09:00",
-    end_time: "10:00",
-    is_booked: true,
-  },
-];
+// Initialize database
+init();
 
-app.get("/", (req, res) => {
-  res.json({ message: "Booking API Running" });
-});
+// Appointment routes
+app.get("/api/appointments", appointmentController.getAppointments);
+app.post("/api/appointments", appointmentController.createAppointment);
+app.put("/api/appointments/:id", appointmentController.updateAppointment);
+app.delete("/api/appointments/:id", appointmentController.deleteAppointment);
 
-app.get("/api/availability", (req, res) => {
-  res.json(mockTimeSlots);
-});
+// Availability routes
+app.get("/api/availability", availabilityController.getAvailability);
+app.post("/api/availability", availabilityController.addAvailability);
+app.post("/api/availability/bulk", availabilityController.addBulkAvailability);
+app.delete("/api/availability/:id", availabilityController.deleteAvailability);
 
-app.post("/api/appointments", (req, res) => {
-  res.status(201).json({
-    message: "Appointment created",
-    appointment: req.body,
-  });
-});
+// Flash routes
+app.get("/api/flash", flashController.getFlashImages);
+app.post("/api/flash", flashController.uploadImage);
+app.delete("/api/flash/:id", flashController.deleteImage);
 
-app.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
+// Email routes
+app.post("/api/subscribe", emailController.subscribeEmail);
+app.post("/api/unsubscribe", emailController.unsubscribeEmail);
+
+app.listen(env.port, () => {
+  console.log(`Server running on port ${env.port}`);
 });

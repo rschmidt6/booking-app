@@ -1,3 +1,4 @@
+// server/db.js
 import Database from "better-sqlite3";
 
 const db = new Database("bookings.db", { verbose: console.log });
@@ -7,20 +8,22 @@ const init = () => {
   db.exec(`
     DROP TABLE IF EXISTS appointments;
     DROP TABLE IF EXISTS availability;
+    DROP TABLE IF EXISTS flash_images;
+    DROP TABLE IF EXISTS email_subscribers;
   `);
 
   // Create tables
   db.exec(`
-    CREATE TABLE availability (
+    CREATE TABLE IF NOT EXISTS availability (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date DATE NOT NULL,
       start_time TIME NOT NULL,
       end_time TIME NOT NULL,
-      is_booked BOOLEAN DEFAULT FALSE,
+      is_booked INTEGER DEFAULT 0,
       UNIQUE(date, start_time, end_time)
     );
 
-    CREATE TABLE appointments (
+    CREATE TABLE IF NOT EXISTS appointments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       booking_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       client_name TEXT NOT NULL,
@@ -32,50 +35,69 @@ const init = () => {
       availability_id INTEGER NOT NULL,
       FOREIGN KEY(availability_id) REFERENCES availability(id)
     );
+
+    CREATE TABLE IF NOT EXISTS flash_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      url TEXT NOT NULL,
+      public_id TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS email_subscribers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      is_subscribed INTEGER DEFAULT 1
+    );
   `);
 
-  // Insert some test data
+  // Insert test data
+  const mockData = createMockData();
+  insertMockData(mockData);
+};
+
+const createMockData = () => {
+  return {
+    availability: [
+      ["2024-11-25", "09:00", "10:00", 0],
+      ["2024-11-25", "10:00", "11:00", 0],
+      ["2024-11-25", "11:00", "12:00", 1],
+      ["2024-11-25", "13:00", "14:00", 0],
+      ["2024-11-26", "09:00", "10:00", 0],
+      ["2024-11-26", "10:00", "11:00", 1],
+    ],
+    appointments: [
+      [
+        "John Doe",
+        "john@example.com",
+        25,
+        "@johnd",
+        200,
+        "Small arm tattoo",
+        3,
+      ],
+      ["Jane Smith", "jane@example.com", 30, "@janes", 500, "Back piece", 5],
+    ],
+  };
+};
+
+const insertMockData = (mockData) => {
   const insertAvailability = db.prepare(`
     INSERT INTO availability (date, start_time, end_time, is_booked)
     VALUES (?, ?, ?, ?)
   `);
 
-  // Add some test time slots
-  const testSlots = [
-    ["2024-11-25", "09:00", "10:00", false],
-    ["2024-11-25", "10:00", "11:00", false],
-    ["2024-11-25", "11:00", "12:00", false],
-    ["2024-11-25", "13:00", "14:00", false],
-    ["2024-11-25", "14:00", "15:00", false],
-    ["2024-11-26", "09:00", "10:00", false],
-    ["2024-11-26", "10:00", "11:00", false],
-    ["2024-11-26", "11:00", "12:00", false],
-  ];
+  const insertAppointment = db.prepare(`
+    INSERT INTO appointments (
+      client_name, email, age, instagram_handle, 
+      budget, service_description, availability_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
 
-  testSlots.forEach((slot) => {
-    insertAvailability.run(slot);
-  });
+  db.transaction(() => {
+    mockData.availability.forEach((slot) => insertAvailability.run(slot));
+    mockData.appointments.forEach((appt) => insertAppointment.run(appt));
+  })();
 };
 
-// Helper functions for common queries
-const getAvailableSlots = db.prepare(`
-  SELECT * FROM availability 
-  WHERE is_booked = FALSE 
-  AND date >= date('now')
-  ORDER BY date, start_time
-`);
-
-const bookSlot = db.prepare(`
-  UPDATE availability 
-  SET is_booked = TRUE 
-  WHERE id = ?
-`);
-
-const createAppointment = db.prepare(`
-  INSERT INTO appointments (
-    client_name, email, age, instagram_handle, 
-    budget, service_description, availability_id
-  ) VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
-
-export { db, init, getAvailableSlots, bookSlot, createAppointment };
+export { db, init };
