@@ -8,7 +8,7 @@ import Info from "./pages/Info";
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen w-screen bg-gray-800">
         <Navbar />
         <main>
           <Routes>

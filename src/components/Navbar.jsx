@@ -2,55 +2,49 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function Navbar() {
   const location = useLocation();
+  const isHome = location.pathname === "/";
 
   const isActive = (path) => {
     return location.pathname === path
-      ? "text-blue-500"
-      : "text-gray-600 hover:text-blue-500";
+      ? "text-gray-800 hover:text-gray-900"
+      : "text-gray-200 hover:text-white";
   };
 
-  return (
-    <nav className="bg-white shadow-md">
+  return !isHome ? (
+    <nav className="bg-gray-500 shadow-md">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-12 font-almendra">
           <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold text-gray-800">
-              BookingApp
+            <Link to="/">
+              <img
+                src="./gs_name1.png"
+                alt="gs logo"
+                className="h-9 w-auto hover:invert"
+              />
             </Link>
           </div>
 
-          <div className="flex items-center space-x-8">
-            <Link
-              to="/"
-              className={`${isActive("/")} transition-colors duration-200`}
-            >
-              Home
+          <div className="flex items-center space-x-4">
+            <Link to="/booking" className={`${isActive("/booking")} font-bold`}>
+              booking
             </Link>
-            <Link
-              to="/booking"
-              className={`${isActive(
-                "/booking"
-              )} transition-colors duration-200`}
-            >
-              Book Now
+            <Link to="/gallery" className={`${isActive("/gallery")} font-bold`}>
+              flash
             </Link>
-            <Link
-              to="/gallery"
-              className={`${isActive(
-                "/gallery"
-              )} transition-colors duration-200`}
-            >
-              Gallery
-            </Link>
-            <Link
-              to="/info"
-              className={`${isActive("/info")} transition-colors duration-200`}
-            >
-              Info
+            <Link to="/info" className={`${isActive("/info")} font-bold`}>
+              info
             </Link>
           </div>
         </div>
       </div>
     </nav>
+  ) : (
+    <div className="flex justify-center items-center">
+      <img
+        src="./gs_name1.png"
+        alt="gs logo"
+        className="h-18 lg:h-28 w-auto p-6"
+      />
+    </div>
   );
 }
