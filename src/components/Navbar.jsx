@@ -12,7 +12,7 @@ export default function Navbar() {
 
   return !isHome ? (
     <nav className="bg-gray-500 shadow-md">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-3xl mx-auto px-4">
         <div className="flex justify-between h-12 font-almendra">
           <div className="flex items-center">
             <Link to="/">
