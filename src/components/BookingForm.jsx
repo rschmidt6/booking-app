@@ -4,6 +4,60 @@ import { useState } from "react";
 import { config } from "../config";
 import { useMemo } from "react";
 
+const formatTimeSlot = (slot) => {
+  // Create a Date object for the appointment date
+  const appointmentDate = new Date(slot.date);
+
+  // Format the day, month, and date with suffix
+  const dayOfWeek = appointmentDate.toLocaleString("en-US", {
+    weekday: "short",
+  });
+  const month = appointmentDate.toLocaleString("en-US", { month: "short" });
+  const dayOfMonth = appointmentDate.getDate();
+
+  // Create the date suffix (th, st, nd, rd)
+  const getDateSuffix = (day) => {
+    if (day >= 11 && day <= 13) return "th";
+    const lastDigit = day % 10;
+    switch (lastDigit) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
+    }
+  };
+  const dateSuffix = getDateSuffix(dayOfMonth);
+
+  // Calculate appointment duration
+  const startTime = new Date(`${slot.date}T${slot.start_time}`);
+  const endTime = new Date(`${slot.date}T${slot.end_time}`);
+  const durationHours = (endTime - startTime) / (1000 * 60 * 60);
+
+  // Format the start time in 12-hour format
+  const timeString = startTime
+    .toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .toLowerCase();
+
+  // Format the duration string
+  const durationString =
+    durationHours === 1
+      ? "1 hour"
+      : durationHours % 1 === 0
+      ? `${durationHours} hours`
+      : `${durationHours} hours`;
+
+  // Combine all parts into the final format
+  return `${dayOfWeek}, ${month} ${dayOfMonth}${dateSuffix} - ${timeString} (${durationString})`;
+};
+
 const getActiveMonthsData = (timeslots) => {
   // Return early if no data
   if (!Array.isArray(timeslots) || timeslots.length === 0) {
@@ -50,6 +104,17 @@ const getActiveMonthsData = (timeslots) => {
     }));
 };
 
+const getActiveTimeslots = (timeslots, selectedMonth) => {
+  // No need to parse since we're now using numbers throughout
+  const filteredSlots = timeslots.filter((slot) => {
+    const date = new Date(slot.date);
+    const monthNumber = date.getMonth() + 1;
+    return monthNumber === Number(selectedMonth);
+  });
+
+  return filteredSlots;
+};
+
 function BookingForm({ timeslots }) {
   // State management
   const [formData, setFormData] = useState({
@@ -64,6 +129,8 @@ function BookingForm({ timeslots }) {
     end_time: "",
   });
   const [selectedMonth, setSelectedMonth] = useState(null);
+  const [activeTimeslots, setActiveTimeslots] = useState([]);
+  const [selectedTimeslot, setSelectedTimeslot] = useState(null);
 
   // Process the availability data and add selected state
   const monthlyAvailability = useMemo(() => {
@@ -77,6 +144,14 @@ function BookingForm({ timeslots }) {
   // Event handlers
   const handleMonthSelect = (monthNumber) => {
     setSelectedMonth(monthNumber === selectedMonth ? null : monthNumber);
+    setActiveTimeslots(getActiveTimeslots(timeslots, monthNumber));
+  };
+
+  const handleTimeslotSelect = (slot) => {
+    // Toggle selection - if same slot is clicked, deselect it
+    setSelectedTimeslot((prevSelected) =>
+      prevSelected?.id === slot.id ? null : slot
+    );
   };
 
   const handleChange = (e) => {
@@ -197,7 +272,7 @@ function BookingForm({ timeslots }) {
 
         {/* appointment time selection */}
         <div className="flex justify-center w-full">
-          <div className="bg-gray-700 rounded mt-2 pb-2 w-full lg:w-3/5">
+          <div className="bg-gray-700 rounded mt-2 pb-2 w-full md:w-3/5 lg:w-3/5">
             <h2 className="flex justify-center p-2">
               Select An Appointment Time
             </h2>
@@ -222,7 +297,7 @@ function BookingForm({ timeslots }) {
                   >
                     <div>{month.monthName}</div>
                     <div className="text-sm text-gray-300">
-                      {month.remainingAppts}{" "}
+                      {month.remainingAppts}
                       {month.remainingAppts === 1 ? "spot" : "spots"} left
                     </div>
                   </div>
@@ -231,21 +306,45 @@ function BookingForm({ timeslots }) {
             </div>
 
             {/* day selector */}
-            <div className="bg-gray-500 mx-4 my-2 p-2 rounded">
-              <div className="mx-2 flex flex-row flex-wrap gap-y-2">
-                <div className="min-w-24">Thu, Nov 16:</div>
-                <div className="bg-gray-400 rounded px-2 mx-1">2:00 pm</div>
-                <div className="bg-gray-400 rounded px-2 mx-1">5:00 pm</div>
+            <div>
+              <div className="flex flex-row flex-wrap gap-y-2">
+                {activeTimeslots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className={`
+          bg-gray-500 rounded py-1 px-2 mx-6 w-full 
+          flex justify-center cursor-pointer
+          border-2 ${
+            selectedTimeslot?.id === slot.id
+              ? "border-orange-400 border-dashed"
+              : "border-gray-500 border-solid"
+          }
+          hover:border-orange-400 hover:border-dashed
+          
+        `}
+                    onClick={() => handleTimeslotSelect(slot)}
+                  >
+                    {formatTimeSlot(slot)}
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* selection confirmation */}
-            <div className="flex justify-evenly my-4">
-              <div className="italic">Timeslot selected:</div>
-              <div className="border-2 rounded border-orange-400 border-dashed px-2">
-                Wed, Nov 16th at 2:00pm
+            {selectedTimeslot ? (
+              <div className="flex justify-evenly my-4">
+                <div className="italic border-2 border-gray-700">
+                  Timeslot selected:
+                </div>
+                <div className="border-2 rounded border-orange-400 border-dashed px-2">
+                  {formatTimeSlot(selectedTimeslot)}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="italic flex justify-center m-4 text-xl">
+                Please select a timeslot
+              </div>
+            )}
           </div>
         </div>
 
@@ -253,7 +352,7 @@ function BookingForm({ timeslots }) {
         <div className="py-2 flex justify-center pt-4 ">
           <button
             className="w-36 border border-gray-600"
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || !selectedTimeslot}
             type="submit"
           >
             {mutation.isPending ? "Submitting..." : "Book"}
