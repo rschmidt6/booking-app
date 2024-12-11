@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
 import { config } from "../config";
@@ -109,7 +109,7 @@ const getActiveTimeslots = (timeslots, selectedMonth) => {
   const filteredSlots = timeslots.filter((slot) => {
     const date = new Date(slot.date);
     const monthNumber = date.getMonth() + 1;
-    return monthNumber === Number(selectedMonth);
+    return monthNumber === Number(selectedMonth) && slot.is_booked === 0;
   });
 
   return filteredSlots;
@@ -128,9 +128,12 @@ function BookingForm({ timeslots }) {
     start_time: "",
     end_time: "",
   });
+
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [activeTimeslots, setActiveTimeslots] = useState([]);
   const [selectedTimeslot, setSelectedTimeslot] = useState(null);
+
+  const queryClient = useQueryClient();
 
   // Process the availability data and add selected state
   const monthlyAvailability = useMemo(() => {
@@ -148,6 +151,7 @@ function BookingForm({ timeslots }) {
   };
 
   const handleTimeslotSelect = (slot) => {
+    console.log(slot);
     // Toggle selection - if same slot is clicked, deselect it
     setSelectedTimeslot((prevSelected) =>
       prevSelected?.id === slot.id ? null : slot
@@ -159,17 +163,31 @@ function BookingForm({ timeslots }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    mutation.mutate(formData);
-  };
-
-  // API mutation setup
-  const mutation = useMutation({
+  // API mutation setup for creating an appointment
+  const createAppointment = useMutation({
     mutationFn: (newAppt) => {
       return axios.post(`${config.apiUrl}/appointments`, newAppt);
     },
+    onSuccess: (data) => {
+      // Update availability after creating the appointment
+      updateAvailability.mutate(selectedTimeslot.id);
+    },
+    onError: (error) => {
+      console.error("Error creating appointment:", error);
+    },
+  });
+
+  // API mutation setup for updating availability
+  const updateAvailability = useMutation({
+    mutationFn: (timeslotId) => {
+      return axios.patch(`${config.apiUrl}/availability/${timeslotId}`, {
+        is_booked: 1,
+      });
+    },
     onSuccess: () => {
+      // Invalidate and refetch timeslots data
+      queryClient.invalidateQueries("timeslots");
+      // Reset form data
       setFormData({
         clientName: "",
         email: "",
@@ -177,13 +195,22 @@ function BookingForm({ timeslots }) {
         igHandle: "",
         budget: "",
         serviceDescription: "",
+        date: "",
+        start_time: "",
+        end_time: "",
       });
-      alert("Appointment booked!");
+      setSelectedTimeslot(null);
+      //i should probably actually just route to a confirmation page and clear the form
     },
     onError: (error) => {
-      alert("Error booking appointment: " + error.message);
+      console.error("Error updating availability:", error);
     },
   });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    createAppointment.mutate(formData);
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-2 font-almendra">
@@ -333,9 +360,7 @@ function BookingForm({ timeslots }) {
             {/* selection confirmation */}
             {selectedTimeslot ? (
               <div className="flex justify-evenly my-4">
-                <div className="italic border-2 border-gray-700">
-                  Timeslot selected:
-                </div>
+                <div className="italic border-2 border-gray-700">Selected:</div>
                 <div className="border-2 rounded border-orange-400 border-dashed px-2">
                   {formatTimeSlot(selectedTimeslot)}
                 </div>
@@ -351,11 +376,11 @@ function BookingForm({ timeslots }) {
         {/* submit button */}
         <div className="py-2 flex justify-center pt-4 ">
           <button
-            className="w-36 border border-gray-600"
+            className="w-36 border border-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed p-2 rounded"
             disabled={mutation.isPending || !selectedTimeslot}
             type="submit"
           >
-            {mutation.isPending ? "Submitting..." : "Book"}
+            {mutation.isPending ? "Submitting..." : "Book!"}
           </button>
         </div>
       </form>
